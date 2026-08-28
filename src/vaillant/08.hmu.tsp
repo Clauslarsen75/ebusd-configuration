@@ -224,7 +224,7 @@ namespace Hmu {
   @inherit(r_2)
   @ext(0x3c)
   model BuildingCircuitFlow {
-    @unit("l/h")
+    @unit("L/h")
     value: UIN;
   }
 
@@ -857,7 +857,7 @@ namespace Hmu {
   @ext(0x2b)
   model TestWaterThroughput {
     /** T.0.45 */
-    @unit("l/h")
+    @unit("L/h")
     value: UIN;
   }
 
