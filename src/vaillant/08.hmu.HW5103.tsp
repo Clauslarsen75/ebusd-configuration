@@ -208,7 +208,7 @@ namespace Hmu_HW5103 {
   @inherit(r_2)
   @ext(0x3c)
   model BuildingCircuitFlow {
-    @unit("L/h")
+    @unit("l/hour")
     value: UIN;
   }
 
