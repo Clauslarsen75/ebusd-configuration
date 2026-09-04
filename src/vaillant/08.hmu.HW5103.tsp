@@ -1,7 +1,6 @@
 import "@ebusd/ebus-typespec";
 import "./_templates.tsp";
 import "./hcmode_inc.tsp";
-import "./errors_inc.tsp";
 using Ebus;
 using Ebus.Num;
 using Ebus.Dtm;
@@ -30,6 +29,125 @@ namespace Hmu_HW5103 {
     @maxLength(1) ign: IGN;
     runtime: minutes4;
     cycles: cntstarts;
+  }
+
+/** HMU display state: compressor power, environmental yield and heater main/backup operating mode */
+  @inherit(r_1)
+  @ext(0x7)
+  model Status07 {
+    /** compressor power */
+    @unit("%")
+    power: UCH;
+
+    /** daily environmental energy yield */
+    @divisor(10)
+    dailyenvyield: energy;
+
+    /** heater main enabled */
+    @values(Values_onoff)
+    display_b0_heaterenabled: BI0;
+
+    /** reserved bit 1 */
+    @values(Values_onoff)
+    display_b1: BI1;
+
+    /** backup heater active */
+    @values(Values_onoff)
+    display_b2_backupheater: BI2;
+
+    /** reserved bit 3 */
+    @values(Values_onoff)
+    display_b3: BI3;
+
+    /** reserved bit 4 */
+    @values(Values_onoff)
+    display_b4: BI4;
+
+    /** noise reduction active */
+    @values(Values_onoff)
+    display_b5_noisereduction: BI5;
+
+    /** DHW eco mode */
+    @values(Values_onoff)
+    display_b6_dhwecomode: BI6;
+
+    /** reserved bit 7 */
+    @values(Values_onoff)
+    display_b7: BI7;
+
+    // heater main operating mode (bit field; bit semantics per @hanjo in #614,
+    // confirmed against a 72 h bus capture: only standby/heating/warmwater seen here)
+
+    /** reserved bit 0 */
+    @values(Values_onoff)
+    heatermain_b0: BI0;
+
+    /** error active (Komfortsicherung) */
+    @values(Values_onoff)
+    heatermain_b1_error: BI1;
+
+    /** reserved bit 2 */
+    @values(Values_onoff)
+    heatermain_b2: BI2;
+
+    /** heating active */
+    @values(Values_onoff)
+    heatermain_b3_heating: BI3;
+
+    /** cooling active */
+    @values(Values_onoff)
+    heatermain_b4_cooling: BI4;
+
+    /** pressure loss */
+    @values(Values_onoff)
+    heatermain_b5_pressureloss: BI5;
+
+    /** reserved bit 6 */
+    @values(Values_onoff)
+    heatermain_b6: BI6;
+
+    /** hot water active */
+    @values(Values_onoff)
+    heatermain_b7_warmwater: BI7;
+
+    /** system pressure */
+    @unit("bar")
+    @divisor(30)
+    DisplayPressure: UCH;
+
+    // backup heater operating mode (same bit field as the main heater)
+
+    /** reserved bit 0 */
+    @values(Values_onoff)
+    heaterbackup_b0: BI0;
+
+    /** error active (Komfortsicherung) */
+    @values(Values_onoff)
+    heaterbackup_b1_error: BI1;
+
+    /** reserved bit 2 */
+    @values(Values_onoff)
+    heaterbackup_b2: BI2;
+
+    /** heating active */
+    @values(Values_onoff)
+    heaterbackup_b3_heating: BI3;
+
+    /** cooling active */
+    @values(Values_onoff)
+    heaterbackup_b4_cooling: BI4;
+
+    /** pressure loss */
+    @values(Values_onoff)
+    heaterbackup_b5_pressureloss: BI5;
+
+    /** reserved bit 6 */
+    @values(Values_onoff)
+    heaterbackup_b6: BI6;
+
+    /** hot water active */
+    @values(Values_onoff)
+    heaterbackup_b7_warmwater: BI7;
   }
 
   /** default *r */
@@ -208,7 +326,7 @@ namespace Hmu_HW5103 {
   @inherit(r_2)
   @ext(0x3c)
   model BuildingCircuitFlow {
-    @unit("l/h")
+    @unit("L/h")
     value: UIN;
   }
 
@@ -226,6 +344,259 @@ namespace Hmu_HW5103 {
   model TotalEnergyUsage {
     @unit("kWh")
     value: energy;
+  }
+
+  // Settings that can be changed from the indoors controller unit
+
+  /** default *r */
+  @auth("install")
+  @base(MF, 0x1a, 0x5, 0xff)
+  model r_3 {
+    @maxLength(3)
+    ign: IGN;
+  }
+
+  /** default *w */
+  @write
+  @auth("install")
+  @base(MF, 0x1a, 0x6, 0xff)
+  model wi_1 {
+  }
+
+  /** heat curve 0.1 to 4.0 */
+  @inherit(r_3, wi_1)
+  @ext(0x35, 0x2d)
+  model HeatCurve {
+    @divisor(10)
+    bcd: BCD;
+  }
+
+  /** summer switch-off temperature */
+  @inherit(r_3, wi_1)
+  @ext(0x35, 0x2e)
+  model SummerSwitchOffTemp {
+    @minValue(10)
+    @maxValue(90)
+    temp: temp;
+  }
+
+  /** bivalence point central heating */
+  @inherit(r_3, wi_1)
+  @ext(0x35, 0x2f)
+  model HcBivalencePoint {
+    @minValue(-30)
+    @maxValue(20)
+    temp: temp;
+  }
+
+  /** bivalence point domestic hot water */
+  @inherit(r_3, wi_1)
+  @ext(0x35, 0x30)
+  model HwcBivalencePoint {
+    @minValue(-20)
+    @maxValue(20)
+    temp: temp;
+  }
+
+  /** alternative point central heating */
+  @inherit(r_3, wi_1)
+  @ext(0x35, 0x31)
+  model HcAlternativePoint {
+    temp: temp;
+  }
+
+  /** maximum allowed flow temperature */
+  @inherit(r_3, wi_1)
+  @ext(0x35, 0x32)
+  model MaxFlowTemp {
+    @minValue(15)
+    @maxValue(90)
+    temp: temp;
+  }
+
+  /** minimum allowed flow temperature */
+  @inherit(r_3, wi_1)
+  @ext(0x35, 0x33)
+  model MinFlowTemp {
+    @minValue(15)
+    @maxValue(90)
+    temp: temp;
+  }
+
+  /** heating function enabled */
+  @inherit(r_3, wi_1)
+  @ext(0x35, 0x34)
+  model HcEnabled {
+    yesno: yesno;
+  }
+
+  /** domestic hot water function enabled */
+  @inherit(r_3, wi_1)
+  @ext(0x35, 0x35)
+  model HwcEnabled {
+    yesno: yesno;
+  }
+
+  /** hysteresis for cylinder charging */
+  @inherit(r_3, wi_1)
+  @ext(0x35, 0x39)
+  model HwcChargeHysteresis {
+    value: hysteresis;
+  }
+
+  /** normal immersion heater activation */
+  @inherit(r_3, wi_1)
+  @ext(0x33, 0x1e)
+  model ImmersionHeaterEnabled {
+    @values(Values_immersion_heater_applications)
+    value: UIN;
+  }
+
+  /** emergency immersion heater activation */
+  @inherit(r_3, wi_1)
+  @ext(0x35, 0x37)
+  model EmergencyModeImmersionHeaterEnabled {
+    // also called "limp home mode" and "Notbetrieb"
+    @values(Values_immersion_heater_applications)
+    value: UIN;
+  }
+
+  /** cooling target flow temperature */
+  @inherit(r_3, wi_1)
+  @ext(0x35, 0x2b)
+  model CoolTargetFlowTemp {
+    @minValue(7)
+    @maxValue(24)
+    temp: temp;
+  }
+
+  /** start heating at energy integral value */
+  @inherit(r_3, wi_1)
+  @ext(0x34, 0x1e)
+  model CompStartHeatingFrom {
+    @minValue(-999)
+    @maxValue(9)
+    value: integral;
+  }
+
+  /** start cooling at energy integral value */
+  @inherit(r_3, wi_1)
+  @ext(0x34, 0x21)
+  model CompStartCoolingFrom {
+    @minValue(0)
+    @maxValue(999)
+    value: integral;
+  }
+
+  /** hysteresis for heating */
+  @inherit(r_3, wi_1)
+  @ext(0x34, 0x43)
+  model CompHysteresisHeating {
+    @minValue(3)
+    @maxValue(15)
+    value: hysteresis;
+  }
+
+  /** hysteresis for cooling */
+  @inherit(r_3, wi_1)
+  @ext(0x35, 0x3f)
+  model CompHysteresisCooling {
+    @minValue(3)
+    @maxValue(15)
+    value: hysteresis;
+  }
+
+  /** maximum allowed differential pressure */
+  @inherit(r_3, wi_1)
+  @ext(0x34, 0x1f)
+  model MaxRemainingDeltaP {
+    @minValue(200)
+    @maxValue(900)
+    @step(10)
+    value: pressm2;
+  }
+
+  /** domestic hot water charging mode */
+  @inherit(r_3, wi_1)
+  @ext(0x34, 0x44)
+  model HwcMode {
+    @values(Values_Domestic_hot_water_mod__eco_normal_balance_)
+    uch: UCH;
+  }
+
+  /** maximum block time by energy company (S21 contact) */
+  @inherit(r_3, wi_1)
+  @ext(0x34, 0x2d)
+  model MaximumS21BlockAllowed {
+    @minValue(0)
+    @maxValue(9)
+    value: hour;
+  }
+
+  /** pump speed for heating */
+  @inherit(r_3, wi_1)
+  @ext(0x33, 0x16)
+  model BuildingCircuitPumpOutputHeating {
+    /** pump percentage or auto */
+    @values(Values_pumpperc)
+    @minValue(49)
+    @maxValue(100)
+    value: percent2;
+  }
+
+  /** pump speed for cooling */
+  @inherit(r_3, wi_1)
+  @ext(0x33, 0x17)
+  model BuildingCircuitPumpOutputCooling {
+    /** pump percentage or auto */
+    @values(Values_pumpperc)
+    @minValue(49)
+    @maxValue(100)
+    value: percent2;
+  }
+
+  /** pump speed for domestic hot water */
+  @inherit(r_3, wi_1)
+  @ext(0x33, 0x18)
+  model BuildingCircuitPumpOutputHwc {
+    /** pump percentage or auto */
+    @values(Values_pumpperc)
+    @minValue(49)
+    @maxValue(100)
+    value: percent2;
+  }
+
+  /** minutes to wait after mains switch on */
+  @inherit(r_3, wi_1)
+  @ext(0x33, 0x19)
+  model BlockTimeAfterRestart {
+    @minValue(0)
+    @maxValue(120)
+    value: minutes2;
+  }
+
+  /** maximum compressor speed in noise reduction mode */
+  @inherit(r_3, wi_1)
+  @ext(0x34, 0x28)
+  @Ebus.example("40%", "3108b51a0405ff3428", "0aff021b280028003c0001")
+  model NoiseReductionLevel {
+    @minValue(40)
+    @maxValue(60)
+    value: percent2;
+  }
+
+  /** number of main heat pump starts */
+  @inherit(r_3)
+  @ext(0x34, 0x30)
+  model HMUSystemStarts {
+    value: cntstarts2;
+  }
+
+  /** cooling enabled */
+  @inherit(r_3, wi_1)
+  @ext(0x33, 0x1b)
+  model ActiveCoolingEnabled {
+    value: onoff;
   }
 
   // B509
@@ -385,6 +756,40 @@ namespace Hmu_HW5103 {
     value: tempv;
   }
 
+  // Error handling for this HW5103 variant.
+  //
+  // Errorhistory (b503 0101) is intentionally not exposed here. On this HMU
+  // the request returns a single byte 0x00 when no history entry is available,
+  // while the generic Errors_inc.Errorhistory definition expects a full
+  // status/time/date/error record and therefore fails with "invalid position".
+  // See ebusd-configuration issue #638.
+  // Currenterror and Clearerrorhistory are kept unchanged.
+
+  /** default *r for current errors */
+  @base(MF, 0x3, 0)
+  model r_error_current {}
+
+  /** current errors */
+  @inherit(r_error_current)
+  @ext(1)
+  model Currenterror {
+    value: errors;
+  }
+
+  /** default *wi for clearing error history */
+  @write
+  @auth("install")
+  @base(MF, 0x3, 0x2)
+  model wi_error_clear {}
+
+  /** clear error history */
+  @inherit(wi_error_clear)
+  @ext(1)
+  model Clearerrorhistory {
+    @in
+    cleared: yesno;
+  }
+
   // B516
   /** default *r */
   @base(MF, 0x16)
@@ -404,6 +809,23 @@ namespace Hmu_HW5103 {
   /** included parts */
   union _includes {
     Hcmode_inc,
-    Errors_inc,
   }
+
+  enum Values_Domestic_hot_water_mod__eco_normal_balance_ {
+    eco: 0,
+    normal: 1,
+    balance: 2,
+  }
+
+  enum Values_immersion_heater_applications {
+    off: 0,
+    heating: 1,
+    dhw: 2,
+    both: 3,
+  }
+
+  enum Values_pumpperc {
+    auto: 49,
+  }
+
 }
