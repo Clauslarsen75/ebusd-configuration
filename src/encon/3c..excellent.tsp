@@ -249,10 +249,10 @@ namespace Excellent {
     value: UIR;
   }
 
-  /** Bypass current */
+  /** Current bypass position */
   @inherit(r_2)
   @ext(0xd)
-  model BypassCurrent {
+  model BypassPosition {
     value: UIR;
   }
 
