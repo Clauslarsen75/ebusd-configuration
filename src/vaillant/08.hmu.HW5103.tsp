@@ -1,6 +1,7 @@
 import "@ebusd/ebus-typespec";
 import "./_templates.tsp";
 import "./hcmode_inc.tsp";
+import "./errors_inc.tsp";
 using Ebus;
 using Ebus.Num;
 using Ebus.Dtm;
@@ -756,40 +757,6 @@ namespace Hmu_HW5103 {
     value: tempv;
   }
 
-  // Error handling for this HW5103 variant.
-  //
-  // Errorhistory (b503 0101) is intentionally not exposed here. On this HMU
-  // the request returns a single byte 0x00 when no history entry is available,
-  // while the generic Errors_inc.Errorhistory definition expects a full
-  // status/time/date/error record and therefore fails with "invalid position".
-  // See ebusd-configuration issue #638.
-  // Currenterror and Clearerrorhistory are kept unchanged.
-
-  /** default *r for current errors */
-  @base(MF, 0x3, 0)
-  model r_error_current {}
-
-  /** current errors */
-  @inherit(r_error_current)
-  @ext(1)
-  model Currenterror {
-    value: errors;
-  }
-
-  /** default *wi for clearing error history */
-  @write
-  @auth("install")
-  @base(MF, 0x3, 0x2)
-  model wi_error_clear {}
-
-  /** clear error history */
-  @inherit(wi_error_clear)
-  @ext(1)
-  model Clearerrorhistory {
-    @in
-    cleared: yesno;
-  }
-
   // B516
   /** default *r */
   @base(MF, 0x16)
@@ -809,6 +776,7 @@ namespace Hmu_HW5103 {
   /** included parts */
   union _includes {
     Hcmode_inc,
+    Errors_inc,
   }
 
   enum Values_Domestic_hot_water_mod__eco_normal_balance_ {
